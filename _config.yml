@@ -10,3 +10,7 @@ theme: minima
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
+
+# Include CNAME file in build
+include:
+  - CNAME
