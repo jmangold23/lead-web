@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page.title }} | {{ site.title }}</title>
+    <meta name="description" content="{{ page.description | default: site.description }}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 60px 20px; text-align: center; }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 20px; }
+        .hero p { font-size: 1.2rem; opacity: 0.95; }
+        .form-section { background: white; padding: 40px; margin: 40px auto; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 10px; }
+        .form-group { margin-bottom: 25px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; color: #555; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #e1e4e8; border-radius: 6px; font-size: 16px; }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+        .btn { background: #667eea; color: white; padding: 14px 30px; border: none; border-radius: 6px; font-size: 18px; cursor: pointer; width: 100%; font-weight: 600; }
+        .btn:hover { background: #5a67d8; }
+        .benefits { margin: 40px 0; }
+        .benefit { margin: 20px 0; padding: 20px; background: #f8f9fa; border-left: 4px solid #667eea; }
+        .privacy { text-align: center; color: #666; font-size: 14px; margin-top: 30px; padding: 20px; background: #f8f9fa; }
+        .success-message { display: none; background: #4caf50; color: white; padding: 15px; border-radius: 6px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <div class="container">
+            <h1>{{ page.headline }}</h1>
+            <p>{{ page.subheadline }}</p>
+        </div>
+    </div>
+
+    <div class="container">
+        {{ content }}
+        
+        <div class="form-section">
+            <h2>{{ page.form_title | default: "Get Your Free Quote" }}</h2>
+            <form id="leadForm" data-vertical="{{ page.vertical }}">
+                <div class="form-group">
+                    <label for="firstName">First Name</label>
+                    <input type="text" id="firstName" name="firstName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="lastName">Last Name</label>
+                    <input type="text" id="lastName" name="lastName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone" required pattern="[0-9]{10}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="zipCode">ZIP Code</label>
+                    <input type="text" id="zipCode" name="zipCode" required pattern="[0-9]{5}">
+                </div>
+                
+                {% if page.custom_fields %}
+                    {{ page.custom_fields }}
+                {% endif %}
+                
+                <button type="submit" class="btn">{{ page.cta_text | default: "Get My Free Quote" }}</button>
+                
+                <div class="success-message" id="successMessage">
+                    Thank you! We'll contact you shortly with your personalized quote.
+                </div>
+            </form>
+        </div>
+        
+        <div class="privacy">
+            <p>Your information is secure and will never be sold. By submitting, you agree to receive communications about relevant services.</p>
+            <p>You can opt out at any time. <a href="/privacy">Privacy Policy</a></p>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('leadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Collect form data
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            data.vertical = this.dataset.vertical;
+            data.pageUrl = window.location.href;
+            data.timestamp = new Date().toISOString();
+            
+            // Store lead data (in production, this would POST to your API)
+            console.log('Lead captured:', data);
+            localStorage.setItem('lead_' + Date.now(), JSON.stringify(data));
+            
+            // Show success message
+            document.getElementById('successMessage').style.display = 'block';
+            this.style.display = 'none';
+            
+            // In production, you would POST to your lead distribution API here
+            // fetch('/api/leads', { method: 'POST', body: JSON.stringify(data) })
+        });
+    </script>
+</body>
+</html>
