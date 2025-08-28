@@ -1,0 +1,83 @@
+name = "lead-arbitrage-system"
+main = "langgraph-worker.js"
+compatibility_date = "2024-08-28"
+
+# Account ID (get from wrangler whoami)
+account_id = "your_account_id"
+
+# D1 Database
+[[d1_databases]]
+binding = "D1"
+database_name = "lead-arbitrage-db"
+database_id = "your_database_id" # Created via: wrangler d1 create lead-arbitrage-db
+
+# KV Namespaces
+[[kv_namespaces]]
+binding = "TREND_CACHE"
+id = "trend_cache_id" # Created via: wrangler kv:namespace create TREND_CACHE
+
+[[kv_namespaces]]
+binding = "REPORTS_KV"
+id = "reports_kv_id" # Created via: wrangler kv:namespace create REPORTS_KV
+
+# R2 Buckets
+[[r2_buckets]]
+binding = "PAGES_BUCKET"
+bucket_name = "landing-pages"
+
+[[r2_buckets]]
+binding = "LEADS_BUCKET"
+bucket_name = "lead-storage"
+
+# Durable Objects (for state management)
+[[durable_objects.bindings]]
+name = "AGENT_STATE"
+class_name = "AgentState"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["AgentState"]
+
+# Environment Variables
+[vars]
+ENVIRONMENT = "production"
+OPENAI_API_ENDPOINT = "https://api.openai.com/v1"
+
+# Secrets (set via: wrangler secret put SECRET_NAME)
+# OPENAI_API_KEY
+# PX_API_KEY
+# LEADCONDUIT_API_KEY
+# BOBERDOO_API_KEY
+
+# Scheduled Cron Triggers
+[triggers]
+crons = [
+  "*/30 * * * *",  # Every 30 minutes - detect trends
+  "0 */6 * * *",   # Every 6 hours - optimize campaigns  
+  "0 2 * * *"      # Daily at 2 AM - generate reports
+]
+
+# Routes
+[[routes]]
+pattern = "api.lead.dwellingdb.com/*"
+zone_name = "dwellingdb.com"
+
+[[routes]]
+pattern = "lead.dwellingdb.com/api/*"
+zone_name = "dwellingdb.com"
+
+# Development Environment
+[env.development]
+vars = { ENVIRONMENT = "development" }
+
+[[env.development.d1_databases]]
+binding = "D1"
+database_name = "lead-arbitrage-db-dev"
+database_id = "dev_database_id"
+
+# Production Limits
+[limits]
+cpu_ms = 50  # 50ms CPU time per request
+
+# Compatibility flags
+compatibility_flags = ["nodejs_compat"]
