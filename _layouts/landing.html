@@ -83,7 +83,67 @@
     </div>
     
     <script>
-        document.getElementById('leadForm').addEventListener('submit', function(e) {
+        // API configuration - update this with your Worker URL
+        const API_ENDPOINT = 'https://api.lead.dwellingdb.com/store-lead'; // Update with your Worker URL
+        // Alternative: Use relative path if Worker is on same domain
+        // const API_ENDPOINT = '/api/store-lead';
+
+        async function uploadLead(leadData) {
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(leadData)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Lead stored:', result);
+                    return true;
+                }
+                
+                throw new Error(`Upload failed: ${response.status}`);
+            } catch (error) {
+                console.error('Lead upload failed:', error);
+                
+                // Fallback: Store locally and retry later
+                const failedUploads = JSON.parse(localStorage.getItem('failedLeads') || '[]');
+                failedUploads.push(leadData);
+                localStorage.setItem('failedLeads', JSON.stringify(failedUploads));
+                
+                return false;
+            }
+        }
+
+        // Alternative: Direct upload using AWS SDK (requires credentials in browser - less secure)
+        async function directS3Upload(leadData) {
+            // This requires including AWS SDK: <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.24.min.js"></script>
+            if (typeof AWS !== 'undefined' && S3_CONFIG.accessKeyId) {
+                AWS.config.update({
+                    accessKeyId: S3_CONFIG.accessKeyId,
+                    secretAccessKey: S3_CONFIG.secretAccessKey,
+                    region: S3_CONFIG.region
+                });
+
+                const s3 = new AWS.S3();
+                const params = {
+                    Bucket: S3_CONFIG.bucket,
+                    Key: `leads/${leadData.vertical}/${Date.now()}.json`,
+                    Body: JSON.stringify(leadData),
+                    ContentType: 'application/json'
+                };
+
+                try {
+                    await s3.putObject(params).promise();
+                    return true;
+                } catch (error) {
+                    console.error('Direct S3 upload failed:', error);
+                    return false;
+                }
+            }
+        }
+
+        document.getElementById('leadForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             // Collect form data
@@ -92,17 +152,43 @@
             data.vertical = this.dataset.vertical;
             data.pageUrl = window.location.href;
             data.timestamp = new Date().toISOString();
+            data.leadId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             
-            // Store lead data (in production, this would POST to your API)
+            // Store locally first
             console.log('Lead captured:', data);
-            localStorage.setItem('lead_' + Date.now(), JSON.stringify(data));
+            localStorage.setItem('lead_' + data.leadId, JSON.stringify(data));
+            
+            // Attempt upload
+            const uploaded = await uploadLead(data);
+            
+            if (uploaded) {
+                console.log('Lead uploaded to S3 successfully');
+            } else {
+                console.log('Lead saved locally, will retry upload later');
+            }
             
             // Show success message
             document.getElementById('successMessage').style.display = 'block';
             this.style.display = 'none';
-            
-            // In production, you would POST to your lead distribution API here
-            // fetch('/api/leads', { method: 'POST', body: JSON.stringify(data) })
+        });
+
+        // Retry failed uploads on page load
+        window.addEventListener('load', async function() {
+            const failedLeads = JSON.parse(localStorage.getItem('failedLeads') || '[]');
+            if (failedLeads.length > 0) {
+                console.log(`Retrying ${failedLeads.length} failed uploads...`);
+                const successful = [];
+                
+                for (const lead of failedLeads) {
+                    if (await uploadLead(lead)) {
+                        successful.push(lead);
+                    }
+                }
+                
+                // Remove successful uploads from failed list
+                const remaining = failedLeads.filter(l => !successful.includes(l));
+                localStorage.setItem('failedLeads', JSON.stringify(remaining));
+            }
         });
     </script>
 </body>
